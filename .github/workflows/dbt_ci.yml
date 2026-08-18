@@ -1,6 +1,9 @@
 name: dbt CI/CD Pipeline
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -35,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install faker psycopg2-binary dbt-postgres==1.8.2
+          pip install faker psycopg2-binary dbt-core==1.8.3 dbt-postgres==1.8.2
 
       - name: Generate Mock Data
         env:
@@ -46,15 +49,15 @@ jobs:
 
       - name: Create temporary profiles.yml
         run: |
-          cat <<EOF > profiles.yml
+          cat << 'EOF' > profiles.yml
           my_project:
             target: dev
             outputs:
               dev:
                 type: postgres
-                host: \${{ env.DB_HOST }}
-                user: \${{ env.DB_USER }}
-                password: \${{ env.DB_PASSWORD }}
+                host: localhost
+                user: test_user
+                password: test_password
                 port: 5432
                 dbname: saas_analytics
                 schema: dbt_development
@@ -67,6 +70,7 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
         run: |
+          cd dbt_project
           dbt deps
-          dbt run --profiles-dir .
-          dbt test --profiles-dir .
+          dbt run --profiles-dir ../
+          dbt test --profiles-dir ../

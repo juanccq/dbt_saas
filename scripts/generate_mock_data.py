@@ -1,3 +1,4 @@
+import os
 import psycopg2
 from faker import Faker
 import random
@@ -6,11 +7,11 @@ from datetime import datetime, timedelta
 fake = Faker()
 
 conn = psycopg2.connect(
-    host="localhost",
+    host=os.getenv("DB_HOST", "localhost"),
     port=5432,
     database="saas_analytics",
-    user="dbt_admin",
-    password="dbt_password"
+    user=os.getenv("DB_USER", "dbt_admin"),
+    password=os.getenv("DB_PASSWORD", "dbt_password")
 )
 cur = conn.cursor()
 

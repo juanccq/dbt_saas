@@ -1,5 +1,5 @@
 {% snapshot subscription_snapshot %}
-
+-- Maybe this file should be deleted
 {{
     config(
         target_schema='snapshots',
