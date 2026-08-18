@@ -38,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install faker psycopg2-binary dbt-postgres==1.8.2
+          pip install faker psycopg2-binary dbt-core==1.8.3 dbt-postgres==1.8.2
 
       - name: Generate Mock Data
         env:
