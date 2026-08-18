@@ -1,0 +1,72 @@
+name: dbt CI/CD Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-dbt-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: saas_analytics
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install faker psycopg2-binary dbt-postgres==1.8.2
+
+      - name: Generate Mock Data
+        env:
+          DB_HOST: localhost
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+        run: python scripts/generate_mock_data.py
+
+      - name: Create temporary profiles.yml
+        run: |
+          cat <<EOF > profiles.yml
+          my_project:
+            target: dev
+            outputs:
+              dev:
+                type: postgres
+                host: \${{ env.DB_HOST }}
+                user: \${{ env.DB_USER }}
+                password: \${{ env.DB_PASSWORD }}
+                port: 5432
+                dbname: saas_analytics
+                schema: dbt_development
+                threads: 4
+          EOF
+
+      - name: Run dbt pipeline and tests
+        env:
+          DB_HOST: localhost
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+        run: |
+          dbt deps
+          dbt run --profiles-dir .
+          dbt test --profiles-dir .
