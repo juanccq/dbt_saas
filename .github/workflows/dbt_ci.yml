@@ -70,6 +70,7 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
         run: |
+          cd dbt_project
           dbt deps
           dbt run --profiles-dir .
           dbt test --profiles-dir .
