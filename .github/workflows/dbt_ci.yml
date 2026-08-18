@@ -49,15 +49,15 @@ jobs:
 
       - name: Create temporary profiles.yml
         run: |
-          cat <<EOF > profiles.yml
+          cat << 'EOF' > profiles.yml
           my_project:
             target: dev
             outputs:
               dev:
                 type: postgres
-                host: \${{ env.DB_HOST }}
-                user: \${{ env.DB_USER }}
-                password: \${{ env.DB_PASSWORD }}
+                host: localhost
+                user: test_user
+                password: test_password
                 port: 5432
                 dbname: saas_analytics
                 schema: dbt_development
