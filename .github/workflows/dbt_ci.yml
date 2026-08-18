@@ -72,5 +72,5 @@ jobs:
         run: |
           cd dbt_project
           dbt deps
-          dbt run --profiles-dir .
-          dbt test --profiles-dir .
+          dbt run --profiles-dir ../
+          dbt test --profiles-dir ../
