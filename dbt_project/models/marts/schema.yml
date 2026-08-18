@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: "Final dimension table for customer lifetime value"
+    columns:
+      - name: user_id
+        description: "The primary key for the customer"
+        data_tests: 
+          - unique
+          - not_null
+
+      - name: subscription_status
+        description: "The current state of their plan"
+        data_tests:
+          - accepted_values:
+              values: ['active', 'canceled', 'past_due']

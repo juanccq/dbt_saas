@@ -1,0 +1,12 @@
+# Ignore dbt compiled files
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# Python environments
+.venv
+
+# Ignore database credentials
+profiles.yml
+docker-compose.yml
+.env

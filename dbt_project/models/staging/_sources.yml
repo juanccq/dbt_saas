@@ -1,0 +1,11 @@
+version: 2
+sources:
+  - name: raw_app_data
+    schema: raw
+    description: "Raw data replicated from our SaaS production database"
+    tables:
+      - name: users
+      - name: subscriptions
+      - name: payments
+      - name: app_events
+      - name: employees
