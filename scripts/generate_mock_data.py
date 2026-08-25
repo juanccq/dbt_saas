@@ -3,6 +3,7 @@ import psycopg2
 from faker import Faker
 import random
 from datetime import datetime, timedelta
+import uuid
 
 fake = Faker()
 
@@ -18,7 +19,7 @@ cur = conn.cursor()
 print("Creating table in 'raw' schema...")
 cur.execute("""
     CREATE SCHEMA IF NOT EXISTS raw;
-    DROP TABLE IF EXISTS raw.payments, raw.subscriptions, raw.users, raw.app_events, raw.employees, raw.sales;
+    DROP TABLE IF EXISTS raw.payments, raw.products, raw.clients, raw.employees, raw.sale_items,raw.sales CASCADE;
 
     CREATE TABLE raw.employees (
         id SERIAL PRIMARY KEY,
@@ -26,92 +27,99 @@ cur.execute("""
         role VARCHAR(50)
     );
 
-    CREATE TABLE raw.sales (
+    CREATE TABLE raw.clients (
         id SERIAL PRIMARY KEY,
-        employee_id INT REFERENCES raw.employees(id),
-        amount DECIMAL(10,2),
-        sale_date DATE
-    );
-
-    CREATE TABLE raw.users (
-        id SERIAL PRIMARY KEY,
-        full_name VARCHAR(255),
+        name VARCHAR(255),
         email VARCHAR(255),
-        signup_date TIMESTAMP
-    );
-
-    CREATE TABLE raw.app_events (
-        id SERIAL PRIMARY KEY,
-        user_id INT REFERENCES raw.users(id),
-        event_name VARCHAR(50),
         created_at TIMESTAMP
     );
 
-    CREATE TABLE raw.subscriptions (
+    CREATE TABLE raw.products (
         id SERIAL PRIMARY KEY,
-        user_id INT REFERENCES raw.users(id),
-        plan_name VARCHAR(50),
-        monthly_rate DECIMAL(10,2),
-        status VARCHAR(20)
+        sku VARCHAR(255),
+        name VARCHAR(255),
+        unit_price DECIMAL(10, 2)
     );
 
-    CREATE TABLE raw.payments (
+    CREATE TABLE raw.sales (
         id SERIAL PRIMARY KEY,
-        subscription_id INT REFERENCES raw.subscriptions(id),
-        amount DECIMAL(10,2),
-        payment_date TIMESTAMP,
-        status VARCHAR(20)
+        employee_id INT REFERENCES raw.employees(id),
+        client_id INT REFERENCES raw.clients(id),
+        sale_date DATE
+    );
+
+    CREATE TABLE raw.sale_items (
+        id SERIAL PRIMARY KEY,
+        sale_id INT REFERENCES raw.sales(id),
+        product_id INT REFERENCES raw.products(id),
+        quantity INT,
+        price DECIMAL(10, 2)
     );
 """)
 
-print("Generating mock Users and Subscriptions...")
-plans = [('Basic', 9.99), ('Pro', 29.99), ('Enterprise', 99.99)]
-statuses = ['active', 'active', 'active', 'canceled', 'past_due']
+print("Generating mock Clients and Subscriptions...")
+cur.execute("INSERT INTO raw.employees (name, role) VALUES ('Alice', 'cashier') RETURNING id")
+alice_id = cur.fetchone()[0]
 
-for _ in range(100):
-    signup_date = fake.date_time_between(start_date='-2y', end_date='now')
-    cur.execute("INSERT INTO raw.users (full_name, email, signup_date) VALUES (%s, %s, %s) RETURNING id",
-                (fake.name(), fake.email(), signup_date))
-    user_id = cur.fetchone()[0]
-
-    plan = random.choice(plans)
-    status = random.choice(statuses)
-    cur.execute("INSERT INTO raw.subscriptions (user_id, plan_name, monthly_rate, status) VALUES (%s, %s, %s, %s) RETURNING id",
-                (user_id, plan[0], plan[1], status))
-    sub_id = cur.fetchone()[0]
-
-    for i in range(random.randint(1, 12)):
-        pay_date = signup_date + timedelta(days=30*1)
-        if pay_date > datetime.now(): break
-        pay_status = 'success' if random.random() > 0.1 else 'failed'
-        cur.execute("INSERT INTO raw.payments (subscription_id, amount, payment_date, status) VALUES (%s, %s, %s, %s)",
-                    (sub_id, plan[1], pay_date, pay_status))
-
-
-event_types = ['login', 'view_dashboard', 'export_report', 'update_profile']
-for _ in range(5000):
-    rand_user = random.randint(1, 100)
-    rand_date = fake.date_time_between(start_date='-1y', end_date='now')
-    rand_event = random.choice(event_types)
-    cur.execute("INSERT INTO raw.app_events (user_id, event_name, created_at) VALUES (%s, %s, %s)",
-                (rand_user, rand_event, rand_date))
-
-names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Ethan', 'Fiona', 'George', 'Hannah', 'Ian', 'Julia']
-employee_ids = []
-
-for name in names:
-    initial_role = 'cashier' if random.random() < 0.8 else 'branch_admin'
-    cur.execute("INSERT INTO raw.employees (name, role) VALUES (%s, %s) RETURNING id", (name, initial_role))
+employee_ids = [alice_id]
+for _ in range(9):
+    cur.execute("INSERT INTO raw.employees (name, role) VALUES (%s, %s) RETURNING id", 
+                (fake.name(), random.choices(['cashier', 'branch_admin'], weights=[0.7, 0.3], k=1)[0]))
     employee_ids.append(cur.fetchone()[0])
 
-for _ in range(100):
-    rand_emp = random.choice(employee_ids)
-    rand_day = random.randint(1, 31)
-    rand_amount = round(random.uniform(15.0, 250.0), 2)
-    sale_date = f"2026-01-{rand_day:02d}"
+client_ids = []
+for _ in range(50):
+    signup_date = fake.date_time_between(start_date='-2y', end_date='now')
+    cur.execute("INSERT INTO raw.clients (name, email, created_at) VALUES (%s, %s, %s) RETURNING id",
+                (fake.name(), fake.unique.email(), signup_date))
+    client_ids.append(cur.fetchone()[0])
 
-    cur.execute("INSERT INTO raw.sales (employee_id, amount, sale_date) VALUES (%s, %s, %s)",
-                (rand_emp, rand_amount, sale_date))
+products = [
+    ("SKU-1001", "Mechanical Keyboard", 120.00),
+    ("SKU-1002", "Wireless Mouse", 45.00),
+    ("SKU-1003", "USB-C Hub", 35.00),
+    ("SKU-1004", "1080p Webcam", 60.00),
+    ("SKU-1005", "Noise Cancelling Headphones", 250.00),
+    ("SKU-1006", "External HDD 1Tb", 470.00),
+    ("SKU-1007", "FullHD Monitor 24'", 380.00)
+]
+product_ids = []
+
+for sku, name, price in products:
+    cur.execute("INSERT INTO raw.products (sku, name, unit_price) VALUES (%s, %s, %s) RETURNING id",
+                (sku, name, price))
+    product_ids.append((cur.fetchone()[0], price))
+
+for _ in range(150):
+    rand_emp = random.choice(employee_ids)
+    rand_client = random.choice(client_ids)
+    rand_day = random.randint(1, 31)
+    sale_date = f"2026-07-{rand_day:02d}"
+
+    cur.execute("INSERT INTO raw.sales (employee_id, client_id, sale_date) VALUES (%s, %s, %s) RETURNING id",
+                (rand_emp, rand_client, sale_date))
+    sale_id = cur.fetchone()[0]
+
+    num_items = random.randint(1, 4)
+    for _ in range(num_items):
+        prod_id, price = random.choice(product_ids)
+        qty = random.randint(1, 2)
+
+        cur.execute("INSERT INTO raw.sale_items (sale_id, product_id, quantity, price) VALUES (%s, %s, %s, %s)",
+                    (sale_id, prod_id, qty, price))
+
+        if random.random() < 0.05:
+            cur.execute("INSERT INTO raw.sale_items (sale_id, product_id, quantity, price) VALUES (%s, %s, %s, %s)",
+                        (sale_id, prod_id, qty, price))
+
+# Force some guaranteed sales for Alice before and after her July 15th promotion
+rand_client = random.choice(client_ids)
+cur.execute("INSERT INTO raw.sales (employee_id, client_id, sale_date) VALUES (%s, %s, %s) RETURNING id", (alice_id, rand_client, '2026-07-05'))
+sale_id = cur.fetchone()[0]
+prod_id, price = random.choice(product_ids)
+qty = random.randint(1, 2)
+cur.execute("INSERT INTO raw.sale_items (sale_id, product_id, quantity, price) VALUES (%s, %s, %s, %s)",
+                    (sale_id, prod_id, qty, price))
 
 conn.commit()
 cur.close()
