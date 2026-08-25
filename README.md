@@ -71,3 +71,9 @@ dbt test
     ├── snapshots/              # Historical tracking logic (SCD Type 2)
     └── tests/                  # Custom data quality tests
 ```
+
+You can see a video of this tutorial here [
+Learn DBT (Data Build Tool) with an Example](https://youtu.be/yANJiG-4XNQ)
+
+And see a post of this here [
+Learn DBT (Data Build Tool) with an Example](https://medium.com/@juan.c.c.q/learn-dbt-data-build-tool-with-an-example-eb509a51d26f)
