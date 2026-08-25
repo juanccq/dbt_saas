@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: int_sales_by_employee
+    description: "Calculates the total line item amount sold by employee"
+    columns:
+      - name: sale_item_id
+        description: "The primary key for this table."
+        tests:
+          - unique
+          - not_null
+      - name: total_sale_item
+        description: "The calculated total for the line item"
+        tests:
+          - not_null

@@ -5,6 +5,7 @@ dbt_project/logs/
 
 # Python environments
 .venv
+.env
 
 # Ignore database credentials
 profiles.yml
